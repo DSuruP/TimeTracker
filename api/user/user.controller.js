@@ -1,7 +1,7 @@
 let mongoose = require('mongoose');
 let { validateUser, validateUpdate } = require('./user.validator');
-let UserModel = require('./index');
-let user = require('./index');
+let UserModel = require('./user.model');
+let user = require('./user.model');
 
 
 //insert new User
@@ -105,7 +105,8 @@ exports.deleteUser = async (req, res, next) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.status(200).json({ id });
+    // res.status(200).json({ id });
+    res.status(200).json("Record Deleted");
   } catch (error) {
     // Send Error Response
     res.status(500).json({ error });
