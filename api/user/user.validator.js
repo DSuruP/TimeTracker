@@ -1,12 +1,12 @@
 const Joi = require('joi');
 
 const userSchema = Joi.object({
- 
-  full_name: Joi.string().max(25).required(),
-  phone: Joi.string().max(50).required(),
-  email_address: Joi.string().email().max(50).required(),
-  password: Joi.string().max(50).required(),
-  designation: Joi.string().max(100).allow(null),
+  full_name: Joi.string().required(),
+  phone: Joi.string().required(),
+  email_address: Joi.string().required(),
+  password: Joi.string().required(),
+  designation: Joi.string().default(null),
+  activation_User: Joi.boolean().default(true),
  
 });
 

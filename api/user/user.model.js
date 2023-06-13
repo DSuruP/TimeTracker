@@ -22,8 +22,15 @@ const userSchema = Schema({
   designation: {
     type: String,
     default: null
+  },
+  activation_User: {
+    type: Boolean,
+    default: true
+  }, 
+  role :{
+      type:mongoose.Schema.Types.ObjectId,
+      ref:'Role'
   }
-  
 })
 
 module.exports = mongoose.model("User", userSchema);
