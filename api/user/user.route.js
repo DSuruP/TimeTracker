@@ -1,34 +1,22 @@
-let express = require('express');
-let router = express.Router(); // access the method of route
+const express = require('express');
+const router = express.Router();
 
-let userController = require('./user.controller');
+const { 
+    userInsert,
+    loginUser 
+    // logoutUser, 
+    // resetPassword, 
+    // forgetPassword
+} = require('./user.controller');
 
-    // router.post('/new', ( req, res, next)  => {
-    //     res.send("hello world");
-    // });
+router.post('/new', userInsert);
 
-/* new */
-router.post('/new', userController.userInsert);
+router.post('/login', loginUser);
 
-/* login */
-router.post('/login', userController.loginUser);
+// router.get ('/logout', logoutUser);
 
-/* logout */
-router.get('/logout', userController.logoutUser);
+// router.post('/password/forgot', forgetPassword);
 
-/* Reset Password */
-router.post('/password/forgot', userController.forgetPassword);
-
-/* List */
-// router.get('/list', userController.showUsers );
-
-/* show */
-// router.get('/show/:id', userController.showUser );
-
-/* update */
-// router.put('/update/:id', userController.updateUser );
-
-// /* update */
-// router.delete('/delete/:id', userController.deleteUser);
+// router.put ('/password/reset/:token', resetPassword);
 
 module.exports = router;

@@ -1,234 +1,233 @@
 let mongoose = require('mongoose');
 const jwt = require("jsonwebtoken")
-// let { validateUser, validateUpdate } = require('./user.validator');
 let user = require('./user.model');
 const nodemailer = require("nodemailer");
-const ErrorHander = require("../utils/errorhander")
+// const ErrorHander = require("../utils/errorhander")
 const catchAsyncError = require("../middleware/catchAsyncError")
 const sendToken = require("../utils/jwtToken");
-const { errorMonitor } = require('nodemailer/lib/xoauth2');
-const { sendMail  } = require("../utils/sendEmail");
+// const { sendMail  } = require("../utils/sendEmail");
+const crypto = require("crypto")
+const { google } = require('googleapis');
+let { validateUser } = require('./user.validator');
+
+
 const getJWTToken = function(){
   return jwt.sign({id:this._id},"SecreyKey",{
     expiresIn: "3D"
   })
 }
 
-//insert new User
-exports.userInsert = async (req,res,next) => {
-    try {
-        // Validation
-    // let { error, value } = validateUser(req.body);
+const CLIENT_ID = '983972594472-cgl7t5ag7lnbp96eb7pffhevhs1jgu35.apps.googleusercontent.com';
+const CLIENT_SECRET = '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';
+const REDIRECT_URI = 'https://developers.google.com/oauthplayground';
+const REFRESH_TOKEN = '1//04cgiBwYTO7F7CgYIARAAGAQSNwF-L9IrgVu67HfoHrSUP3wu_gim4m6gCOWYnrmWOHTDpYyEy_8fKpBTqsX1WLWt498HXxI1zVk';
 
-    // Check Error in Validation
-    // if (error) {
-    //   return res.status(400).send(error.details[0].message);
-    // }
+const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
 
-    // Insert table
-    // let userModel = new user(value);
-    // let savedData = await userModel.save();
+// Function to validate user data
+// function validateUser(user) {
+//   return userSchema.validate(user);
+// }
 
-    // Send Response
-    // res.status(200).json('Data inserted');
+// Function to send registration success email
+async function sendMail(options) {
+  try {
+    const accessToken = await oAuth2Client.getAccessToken();
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        type: 'OAuth2',
+        user: 'survesh.pandit@furation.tech',
+        clientId: CLIENT_ID,
+        clientSecret: CLIENT_SECRET,
+        refreshToken: REFRESH_TOKEN,
+        accessToken: accessToken,
+      },
+    });
+    const mailOptions = {
+      from: 'Suru <survesh.pandit@furation.tech>',
+      to: options.email_address,
+      subject: options.subject,
+      text: options.message,
+    };
+    const result = await transporter.sendMail(mailOptions);
 
+    return result;
+  } catch (error) {
+    throw error;
+  }
+}
+
+// Insert new User
+exports.userInsert = async (req, res, next) => {
+
+   // Validate Data
+  // Check User exist or not [ exist => already exist message]
+  // Insert New employee
+  // Mail (Link)
+  // Response admin 200
+  
+
+  try {
     const { full_name, phone, email_address, password, designation } = req.body;
 
-    const userAdd = await user.create({
+    // Validate user data
+    const { error } = validateUser(req.body);
+
+    // Check Error in Validation
+    if (error) {
+      return res.status(400).send(error.details[0].message);
+    }
+
+    // Check if user already exists
+    const existingUser = await user.findOne({ email_address });
+    if (existingUser) {
+      return res.status(409).json({ error: 'User already exists' });
+    }
+
+    // Insert new user
+    const newUser = await user.create({
       full_name,
       phone,
       email_address,
       password,
-      designation
+      designation,
     });
 
-    const token = getJWTToken();
-    // sendToken(userAdd, 201,res)
+    // Send registration success email
+    const mailOptions = {
+      email_address: newUser.email_address,
+      subject: 'Registration Successful',
+      message: 'Congratulations! Your registration was successful.',
+    };
 
-    res.status(201).json({
+    const result = await sendMail(mailOptions);
+
+    // res.status(201).json({
+    res.status(200).json({
       success: true,
-      token,
-      userAdd
+      newUser,
+      message: `Email sent to ${result.email_address} successfully`,
     });
-    
-    } catch (error) {
-
-      console.log(error);
-       // Send Error Response
-    res.status(500).json('Error inserting data into database'); 
-    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error inserting data into the database' });
+  }
 };
 
 
 //Login User
-exports.loginUser = catchAsyncError(async (req,res,next) => {
-  const {email_address, password} = req.body;
+const Joi = require('joi');
+// const { catchAsyncError } = require('your-error-handler-module'); // Replace with your actual error handler module
 
-  //checking the email and password
-  if (!email_address || !password) {
-    return next(new ErrorHander("Please Enter Email and Password",400))
-
-  }
-
-  const userNew = await user.findOne({email_address}).select("+password")
-
-  if(!userNew){
-    return next(new ErrorHander("Invalid email and password",401))
-  }
-
-  const isPasswordMatched = await userNew.comparePassword(password);
-
-  if(!isPasswordMatched){
-    return next(new ErrorHander("Invalid email and password",401))
-  }
-
-  // const token = getJWTToken();
-  // // const token = req.cookies.token;
-
-  //   res.status(200).json({
-  //     success: true,
-  //     token,
-  //     userNew
-  //   }); 
-
-  sendToken(userNew, 201,res)
-})
-
-//Logout User
-exports.logoutUser = catchAsyncError(async (req,res,next) => {
-
-  res.cookie("token", null, {
-    expires: new Date(Date.now()),
-    httpOnly: true,
-  });
-  
-  res.status(200).json({
-    success: true,
-    message: "Logged Out"
-  })
-})
-
-
-//Forgot Password
-exports.forgetPassword = catchAsyncError(async (req,res,next) => {
-
-  const userPassword =  await user.findOne({email: req.body.email})
-
-  if(!userPassword){
-    return next(new ErrorHander("User not found", 404))
-  }
-
-  //Get resetPassword Token
-  const resetToken = userPassword.getResetPasswordToken()
-
-  await userPassword.save({validateBeforeSave: false});
-
-  const resetPasswordUrl = `${req.protocol/*to show http/https */}://${req.get(
-    "host"
-  )}/api/password/rest/${resetToken}`;
-
-  const message = `Your password reset token is :- \n\n ${resetPasswordUrl} \n\nIf you have not requested this email then, please ignore it`;
-
-  try {
-    await sendMail ({
-      email_address: userPassword.email_address,
-      subject: `TimeTracker Password Recovery Done`,
-      message,
-    });
-
-    res.status(200).json({
-      success: true,
-      message: `Email sent to ${userPassword.email_address} successfully`
-    })
-  } catch (error) {
-    userPassword.resetPasswordToken = undefined;
-    userPassword.resetPasswordExpire = undefined; 
-
-    await userPassword.save({validateBeforeSave: false});
-
-    return next(new ErrorHander(error.message, 500))
-  }
-
+// Validation schema for login data
+const loginSchema = Joi.object({
+  email_address: Joi.string().email().required(),
+  password: Joi.string().required(),
 });
 
-// Update User
-// exports.updateUser = async (req, res, next) => {
-//     try {
-//       let id = req.params.id;
-  
-//       // Validation
-//       let { error, value } = validateUpdate(req.body);
-  
-//       // Check Error in Validation
-//       if (error) {
-//         return res.status(400).send(error.details[0].message);
-//       }
-  
-//       let user = await UserModel.findOneAndUpdate({ _id: id }, value, {
-//         new: true
-//       });
-  
-//       if (!user) {
-//         console.log('User not found');
-//         return res.status(404).json({ message: 'User not found' });
-//       }
-  
-//       res.status(200).json({ user });
-//     } catch (error) {
-  
-//       console.log(error);
-//       // Send Error Response
-//       res.status(500).json('Error updating table');
-//     }
-//   };
+exports.loginUser = catchAsyncError(async (req, res, next) => {
+  try {
+    // Validate input data
+    const { error } = loginSchema.validate(req.body);
+    if (error) {
+      return next(new Error('Validation error: ' + error.details[0].message));
+    }
 
-  // Display Single User
-  // exports.showUser = async (req, res, next) => {
-  //   try {
-  //     let id = req.params.id;
-  //     let user = await UserModel.findOne({ _id: id });
-  
-  //     if (!user) {
-  //       console.log('user not found');
-  //       return res.status(404).json({ message: 'User not found' });
-  //     }
-  
-  //     res.status(200).json({ user });
-  //   } catch (error) {
-  //     res.status(500).json({ error });
-  //   }
-  // };
+    const { email_address, password } = req.body;
 
-  // Display List
-// exports.showUsers = async (req, res, next) => {
-//     try {
-//       let user = await UserModel.find();
-//       if (!user || user.length === 0) {
-//         console.log('User not found');
-//         return res.status(404).json({ message: 'User not found' });
-//       }
-//       res.status(200).json({ user });
-//     } catch (error) {
-//       res.status(500).json({ error });
-//     }
-//   };
+    const userNew = await user.findOne({ email_address }).select('+password');
 
-  // Delete Table
-// exports.deleteUser = async (req, res, next) => {
-//   try {
-//     let id = req.params.id;
+    if (!userNew) {
+      return next(new Error('Invalid email or password'));
+    }
 
-//    let user = await UserModel.deleteOne({ _id: id });
+    const isPasswordMatched = await userNew.comparePassword(password);
 
-//     if (!user) {
-//       console.log('User not found');
-//       return res.status(404).json({ message: 'User not found' });
-//     }
+    if (!isPasswordMatched) {
+      return next(new Error('Invalid email or password'));
+    }
 
-//     // res.status(200).json({ id });
-//     res.status(200).json("Record Deleted");
-//   } catch (error) {
-//     // Send Error Response
-//     res.status(500).json({ error });
+    sendToken(userNew, 201, res);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error logging in user' });
+  }
+});
+
+// //Logout User
+// exports.logoutUser = catchAsyncError(async (req, res, next) => {
+//   res.cookie("token", null, {
+//     expires: new Date(Date.now()),
+//     httpOnly: true,
+//   });
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Logged Out",
+//   });
+// });
+
+// //Forgot Password
+// exports.forgetPassword = catchAsyncError(async (req, res, next) => {
+//   const userPassword = await user.findOne({ email: req.body.email });
+
+//   if (!userPassword) {
+//     return next(new ErrorHander("User not found", 404));
 //   }
-// };
+
+//   const resetToken = userPassword.getResetPasswordToken();
+//   await userPassword.save({ validateBeforeSave: false });
+
+//   const resetPasswordUrl = `${req.protocol}://${req.get(
+//     "host"
+//   )}/api/password/reset/${resetToken}`;
+
+//   const message = `Your password reset token is: ${resetPasswordUrl}\n\nIf you have not requested this email, please ignore it.`;
+
+//   try {
+//     await sendMail({
+//       email_address: userPassword.email_address,
+//       subject: "TimeTracker Password Recovery Done",
+//       message,
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       message: `Email sent to ${userPassword.email_address} successfully`,
+//     });
+//   } catch (error) {
+//     userPassword.resetPasswordToken = undefined;
+//     userPassword.resetPasswordExpire = undefined;
+//     await userPassword.save({ validateBeforeSave: false });
+//     return next(new ErrorHander(error.message, 500));
+//   }
+// });
+
+
+// //Reset Password
+// exports.resetPassword = catchAsyncError(async (req, res, next) => {
+//   const resetPasswordToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
+
+//   const userReset = await user.findOne({ resetPasswordToken });
+
+//   if (!userReset) {
+//     return next(new ErrorHander("Reset Password Token is invalid or has expired", 400));
+//   }
+
+//   if (req.body.password !== req.body.confirmPassword) {
+//     return next(new ErrorHander("Password and Confirm Password do not match", 400));
+//   }
+
+//   userReset.password = req.body.password;
+//   userReset.resetPasswordToken = undefined;
+//   userReset.resetPasswordExpire = undefined;
+
+//   await userReset.save();
+
+//   sendToken(userReset, 200, res);
+// });
+
+
+
