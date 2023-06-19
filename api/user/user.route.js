@@ -7,18 +7,28 @@ let userController = require('./user.controller');
     //     res.send("hello world");
     // });
 
+/* new */
 router.post('/new', userController.userInsert);
 
+/* login */
+router.post('/login', userController.loginUser);
 
-router.get('/list', userController.showUsers );
+/* logout */
+router.get('/logout', userController.logoutUser);
+
+/* Reset Password */
+router.post('/password/forgot', userController.forgetPassword);
+
+/* List */
+// router.get('/list', userController.showUsers );
 
 /* show */
-router.get('/show/:id', userController.showUser );
+// router.get('/show/:id', userController.showUser );
 
 /* update */
-router.put('/update/:id', userController.updateUser );
+// router.put('/update/:id', userController.updateUser );
 
 // /* update */
-router.delete('/delete/:id', userController.deleteUser);
+// router.delete('/delete/:id', userController.deleteUser);
 
 module.exports = router;

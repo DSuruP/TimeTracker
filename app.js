@@ -7,7 +7,6 @@ var logger = require('morgan');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var userRouter = require('./api/user/user.route');
-var roleRouter = require('./api/role/role.route');
 
 var app = express();
 
@@ -24,7 +23,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/user', userRouter);
-app.use('/role', roleRouter);
 
 // moongoose Connection
 
